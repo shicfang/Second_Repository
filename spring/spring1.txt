@@ -1,0 +1,280 @@
+1、Spring开发web项目及拆分Spring配置
+SpringIOC容器初始化：所有bean实例化为对象
+将各个bean依赖的属性值注入进去
+
+java程序的入口是统一 的main()，一次只需要在main中实例化一次applicContext.xml
+Application context=new ClassPathXmlApplicationContext("配置文件");
+
+
+javaweb程序：初始化IOC容器（没有统一的入口）
+web项目初始化SpringIOC容器：
+jar:6+1
+spring-web.jar
+当服务启动时（tomcat）,通过监听器将springIOC容器初始化一次，监听器监听Tomcat是否启动，一旦启动，立刻实例化一个IOC容器对象
+
+
+web.xml
+web项目启动时，会自动加载web.xml,因此需要在web.xml中加载监听器
+
+<context-param>
+<!--contextConfigLocation保存着容器配置文件applicationContext.xml-->
+<param-name>contextConfigLocation</param-name>
+<param-value>classpath:applicationContext.xml</param-value>
+</context-param>
+<!--配置spring-web.jar提供的监听器，此监听器可以再服务器启动初始化IOC容器。初始化IOC容器（applicationContext.xml）,必须告诉监听器此容器的位置：<context-param>
+如果放在WEB-INF(默认约定位置)里以及文件名必须为（applicationContext.xml）,可以不指定位置
+-->
+<listener>
+<listener-class>org.springframeword.web.context.ContextLoaderListener</listener-class>
+</listenter
+
+2、差人spring配置文件
+java项目：
+Application context=new ClassPathXmlApplicationContext("applicContext.xml");
+
+Javaweb项目：
+a、三层结构
+UI(html/css/jsp、Servlet) applicationContext-Controller.xml
+Service    applicationContext-Service.xml
+Dao        applicationContext-Dao.xml
+公共 数据库  applicationContext-DB.xml
+b、功能结构
+学生相关配置：applicationContextStudent.xml
+班Course相关配置：applicationContextCourse.xml
+
+
+整合拆分文件
+1.
+<context-param>
+<param-name>contextConfigLocation</param-name>
+<param-value>
+classpath:applicationContextxx1.xml
+classpath:applicationContextxx2.xml
+classpath:applicationContextxx3.xml
+或者：classpath:applicationContext-*.xml
+</param-value>
+</context-param>
+
+2.（了解）
+applicationContext.xml
+引入其他文件
+c
+<impot resource="applicationContext-*.xml"/>
+3.只在web.xml加载主配置文件，
+<context-param>
+<param-value>
+classpath:applicationContextxx1.xml
+</param-value>
+</context-param>
+在主配置文件中引入其他文件
+<context-param>
+<param-name>contextConfigLocation</param-name>
+<param-value>
+classpath:applicationContextxx1.xml
+
+Interface IStudentDao{
+xxx(){}
+}
+
+class StudentDaoImpl implements IStudent{
+xxx()
+}
+Interface IStudentService{
+}
+class StudentServiceImpl implements IStudentService{
+xxxDao xxx=new xxxDao();
+private static StudentService studentService;
+}
+
+xxxservlet{
+IStudentService studentService;//通过spring容器将studentS而vice注入
+doGet(){
+}
+doPost(){}
+//servlet初始化方法：在初始化时，获取SpringIOC容器的bean对象
+
+Servlet容器与SpringIOC容器之间的桥梁
+init()throw ServletExceptionI{
+/*ApplicationContext context=new ClassPathXmlApplicationContext("appliactionContext.xml");*/
+
+//web项目获取spring上下文对象context
+ApplicationContext context=WebApplicationContextUtils.getWebApplicationContext(this.getServletContext);
+studentService=(IStudentService)context.getBean("studentService");
+}
+}
+
+<bea id="studentServlet" class="">
+<property name="studentService" ref="studentService"/>
+</bean>
+<bean id="studentService" class="">
+<propert name="studentDao" ref="studentDao"/>
+</bean>
+<bean id="studentDao" class="">
+<!--studentDao 应该依赖于DataSource-->7
+</bean>
+
+
+3、Spring整合Mybatis
+思路：
+SqlSessionFactory->SqlSession->Mapper->CRUD
+将mybatis的SqlSessionFactory交给spring
+
+步骤：
+1、jar:
+mybatis-spring.jar  //整合用
+spring-tx.jar
+spring-jdbc.jar
+spring-expression.jar
+spring-context-support.jar
+spring-core.jar
+spring-context.jar
+spring-beans.jar
+spring-aop.jar
+spring-web.jar
+commons-logging.jar
+commons-dbcp.jar   数据源
+mybatis.jar
+log4j.jar
+commons-pool.jar
+mysql-connector-java.jar
+
+2、类-表
+3、mybatis配置文件：mybatis-config.xml
+4、通过mapper.xml将类、表建立映射关系
+通过spring管理SqlSessionFactory
+
+db.properties  数据库配置
+
+applicationContext.xml
+<!--配置数据相关信息，代替mybatis-config.xml-->
+<!--加载db.properties文件-->
+<bean id="dbconfig" class="">
+<property>
+<array>
+<value>classpath:db.properties</value>
+</array>
+</property>
+</bean>
+<!--在SpringIOC容器中-->
+<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionaFactoryBean">
+<property name="dataSource" ref="dataSource"/>
+<!--加载mapper.xml路径->
+<property name="mapperLocation" value="包*.xml"/>
+</bean>
+<bean id="studentMapper" class="包.StudentDaoImpl">
+<!--将spring配置的SQLSessionFactory对象交给mapper(dao)-->
+<property name="sqlSessionFactory" ref="sqlSessionFactory"/>
+</bean>
+
+
+<bean id="studentService" class="包.StudentServiceImpl">
+<property name="studentmMpper" ref="studetnMapper"/>
+</bean>
+
+5、使用spring-mybatis整合产物开发程序
+ 目标：通过spring产生mybatis最终操作需要的动态mapper对象（xxxMapper对象）
+spring产生动态mapper对象的3种方法：
+第一种方法:
+a.DAO层实现类，继承SqlSessionDaoSupport类
+SqlSessionDaoSupport类提供了一个属性SQLSession
+
+
+//service层
+Interface ISudentService{
+addStudent(){}
+}
+
+StudentServiceImpl implements StudentService{
+addStudent(){
+StudentMapper studentMapper=
+}
+}
+
+//（dao层）dao-mapper
+Inteface StudentMapper{
+addStudent(Student student)
+}
+//实现类
+class StudentDaoImpl extends SqlSessionDaoSupport implements SudentMapper{
+addStudent(Student student){
+SqlSession sqlSession=super.getSqlSession();
+StudentDao stuDao=sqlSession.getMapper(Studentmapper.class);
+}
+}
+
+第一种方法
+b、省略第一种方式的实现类，通过mybatis提供的mapper实现类
+缺点：每个mapper都需要配置一次
+applicationContext.xml
+<!--配置数据相关信息，代替mybatis-config.xml-->
+<!--加载db.properties文件-->
+<bean id="dbconfig" class="">
+<property>
+<array>
+<value>classpath:db.properties</value>
+</array>
+</property>
+</bean>
+<!--在SpringIOC容器中-->
+<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionaFactoryBean">
+<property name="dataSource" ref="dataSource"/>
+<!--加载mapper.xml路径->
+<property name="mapperLocation" value="包*.xml"/>
+</bean>
+<bean id="studentMapper" class="org.mybatis.spring.mapper.MapperFactoryBean">
+<property name="mapperInterface" value="包.studetnMapper"/>
+<property name="sqlSessionFactory" ref="sqlSessionFactory"/>
+</bean>
+<bean id="studentService" class="包.StudentServiceImpl">
+<property name="studentmMpper" ref="studetnMapper"/>
+</bean>
+
+c、第三种方式
+<!--配置数据相关信息，代替mybatis-config.xml-->
+<!--加载db.properties文件-->
+<bean id="dbconfig" class="">
+<property>
+<array>
+<value>classpath:db.properties</value>
+</array>
+</property>
+</bean>
+
+<!--在SpringIOC容器中-->
+<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionaFactoryBean">
+<property name="dataSource" ref="dataSource"/>
+<!--加载mapper.xml路径->
+<property name="mapperLocation" value="包*.xml"/>
+</bean>
+
+<!--批量产生mapper对象，默认就是接口名=id值-->
+<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+<!--指定批量产生哪个包的mapper对象-->
+<property name="basePackage" value="包"/>
+<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+</bean>
+
+<bean id="studentService" class="包.StudentServiceImpl">
+<property name="studentmMpper" ref="studentMapper"/>
+</bean>
+
+------------------------------------------------------
+注解方式
+//<bean id="studentService" class="包.StudentServiceImpl">
+<property name="studentmMpper" ref="studentMapper"/>
+</bean>
+
+//开启注解需要扫描包
+<context:component-scan  base-package=""/>
+@Service("studentService")
+class StudentServiceImpl implements IStudentService{
+@Autowired//自动装配，byType
+@Qualifier("xxx")//byName
+privateIStudentDao studentDao;
+}
+
+@Repository()
+@Repository("xxx")//byName
+class StudenDaoImpl implements IStudentDao{
+
+}

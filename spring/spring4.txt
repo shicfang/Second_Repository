@@ -1,0 +1,37 @@
+---自动装配
+方式一：
+@Autowired：默认根据类型
+名字匹配
+@Qualifier
+@Autowired
+方式二：@Resourse(JSR250),默认根据名字
+@Resource(type=Student.class)
+方式三：@Inject(JSR330),默认根据类型javax-inject.jar
+
+
+利用spring底层组件进行开发，能够供我们使用的组件，都是Aware子接口
+ApplicationContextAware:实现步骤
+xxx implements ApplicationContextAware{
+private ApplicationContext appplicationContext;
+
+setApplicationContext(ApplicationContex applicationContet){
+}
+}
+
+环境切换：@Profile("环境名") 
+激活方式一：
+-Dspring.profiles.active=@Profile环境名
+激活方式二：硬编码
+AnnotationConfigApplicationContext context=new AnnotationConfigApplicationContext(Myconfig.class);
+context.getEnviroment=(ConfigurationEnviroment)context.getEnviroment;
+enviroment.setActivePorfies("环境名")：
+context.register(Myconfig.class);
+context.refresh();
+Object xxx=context.getBean("xxx");
+class Enviroment{
+
+}
+
+xxx extends xxxoo{}
+
+

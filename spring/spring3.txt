@@ -1,0 +1,171 @@
+springIOC容器
+两种形式：
+两种形式获取的IOC容器是独立的
+
+xml配置文件:applicationContext.xml 
+存bean:<bean>
+取bean :ApplicationContext context=new ClassPathXmlApplication(configLocation:"applicationContext.xml");
+context.getBean("");
+
+注解:带有@Configuration注解的类（配置类）
+存bean:
+1、必须有@Configuration注解（配置类）
+2、形式：
+三层组件：（@Controller、@Service、@Repositoty)-->@Compoent
+a、给三层组件分别加注解
+@Controller
+ class xxxControler{
+}
+
+@Service
+class xxxService{
+}
+@Repository
+class xxxDao{
+}
+
+
+//存bean
+@Configuration
+@ComponentScan(value="包"，excludeFilters={@ComponentScan.Filter(type=FilterType.ANNOTATION,value=@Service.class)
+class xxxx{
+@Bean      //id="方法名" ,默认为方法名
+public Student myStudent(){
+return  xxx;
+}
+}
+
+b、将注解所载包纳入IOC扫描器（ComponentScan）
+     纳入IOC扫描器：
+    AAA ----XML配置文件:
+<context:component-scan base-package="包1，包2"/>
+    BBB---注解配置：
+给扫描器指定规则：
+过滤类型：
+FilterType(ANNOTATION,ASSIGNABLE_TYPE,CUSTOM)
+
+ANNOTATION:三层注解类型（@Controller、@Service、@Repositoty)-->@Compoent
+ANNOTATION:Controllere.class指的是所有标有@Controller的类
+
+
+
+execludeFilters:排除
+includeFilters:包含，有默认行为，可以通过useDefaultFilters=false禁止
+
+ASSIGNABLE_TYPE:指的是具体的一个类（xxx.class）
+
+CUSTON:自定义包含规则
+@componentScan.Filter(type=FilterType.CUSTOM,value={MyFilter.class}
+
+MyFIlter implements TypeFilter 重写其中的match，如果return true 则加入IOC容器
+
+
+@Configuration
+@ComponentScan(value="包"，excludeFilters={@ComponentScan.Filter(type=FilterType.ANNOTATION,value={Service.class,Repository.class})})//排除
+
+@ComponentScan(value="包"，includeFilters={@ComponentScan.Filter(type=FilterType.ANNOTATION,value={Service.class,Repository.class})},useDefaultFilters=false)
+class xxxx{
+@Bean      //id="方法名" ,默认为方法名
+public Student myStudent(){
+return  xxx;
+}
+}
+
+ASSIGNABLE_TYPE:具体的类（xxx.class）
+@Configuration
+@ComponentScan(value="包"，excludeFilters={@ComponentScan.Filter(type=FilterType.ASSIGNABLE_TYPE,value={类名}})//排除
+
+CUSTON:自定义规则
+@Configuration
+@ComponentScan(value="包"，excludeFilters={@ComponentScan.Filter(type=FilterType.CUSTOM,value={MyFilter.class//自定义扫描器}})//排除
+
+
+自定义
+class MyFilter implements TypeFilter{
+public boolean match(MeatedataReader metadataReader,MetadateReaderFactory metadataReaderFactory){
+ClassMetadata classMetadata=metadataReader.getClassMetadata();
+//扫描器扫描“xxx包”中的所有类，getClassName()可以拿到该包中所有标有三层注解类的
+String className=classMetadata.getClassName();
+//只过滤出和学生相关的三层组件
+if(className.contains("Student")){
+return ture;
+}
+return false;
+}
+}
+
+取bean:
+ApplicationContext context=new AnnotationApplicationContext(Myconfig.class（配置类）);
+context.getBean(s:"xxx");
+
+ String[] ids=context.getBeanDefinitionNames();//获取所有bean的id
+
+
+
+非三层组件：（Student.classs....）
+在@Configuration里
+1111:@Bean+方法返回值，id值是方法名,或修改ID值@Bean（“id值”）
+2222:
+@import()
+自定义ImpotSelector接口的实现类，重写方法；
+@Import(xxx.class)
+xxx implements ImportSelector{
+return new String[]{xxx,xxx,xxx};
+}
+编写ImportBeaDefinitionRegistrar实现类
+
+--FactoryBean
+@FactoryBean
+1、实现类和重写方法
+2、注册bean
+
+
+bean作用域：
+@scope:（singleton|prototype）
+@Lazy//延迟加载
+
+执行时机（产生bean的时机）
+           singleton:容器在初始化时，就会创建对象（唯一一个），以后再getBean是，不在产生新的bean。支持延迟加载，在第一次使用时产生@Lazy
+            prototype:容器在初始化时，不创建对象；知识在每次使用时（每次从容器中获取对象时，context.getBean(xxx)），再创建对象，并且每次getBean时都会创建一个新的对象
+
+
+
+
+条件注解：Spring Boot
+让某一个Bean在某些条件下加如IOC容器
+a、准备bean
+b、给每个Bean设置条件，次序实现Condition接口
+c、根据条件加入IOC容器@Condition(xxxx.class)
+
+
+----Bean的生命周期：初始化、创建并使用、销毁...
+方法一：
+     init(初始化) destroy(销毁)
+xml:
+<bean id="" class="" init-method="方法名" destroy-method="方法名"></bean>
+注解：
+@Bean(value="id值" initMethod="方法名"，destroyMethod="方法名")
+IOC容器在初始化时，会自动创建对象（构造方法）->init->..->容器关闭时，调用destroy
+方法二：（适用于三层组件）
+三层注解（功能性注解）：
+  Java规范：JSR250
+1、将响应组件加入@Component注解、给初始化方法加@PostConstruct、给销毁方法加@PreDestroy
+@PostConstruct:相当于init
+@PreDestroy：相当于destroy
+如果要获取@Component注解中的bean、哪个该Bean的名字就是@Component(value="xxx")中value的值
+方法三：
+接口
+InitializingBean初始化afterPropertiesSet()方法
+DisposableBean销毁destroy()方法
+
+
+方法四：
+接口：适用于三层组件
+
+（给容器中的所有Bean加初始化、销毁）BeanPostProcessor拦截了所有中容器的Bean
+
+Object BeanPostProcessBeforeInitialization（Object bean,Stirng beanName）
+
+Object BeanPostProcessAfterInitialization
+
+
